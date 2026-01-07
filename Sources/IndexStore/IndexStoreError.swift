@@ -11,7 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-public import IndexStoreDB_CIndexStoreDB
+public import IndexStoreCAPI
 
 /// An error thrown by the libIndexStore dynamic library.
 public final class IndexStoreError: Error, CustomStringConvertible, Sendable {

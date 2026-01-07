@@ -49,7 +49,7 @@ let package = Package(
 
     .target(
       name: "IndexStore",
-      dependencies: ["IndexStoreDB_CIndexStoreDB"],
+      dependencies: ["IndexStoreCAPI"],
       swiftSettings: [
         .enableUpcomingFeature("ExistentialAny"),
         .enableUpcomingFeature("InternalImportsByDefault"),
@@ -68,6 +68,9 @@ let package = Package(
         "ISDBTibs",
       ]
     ),
+
+    // C API of libIndexStore that can be dlopen'ed from the IndexStore target
+    .target(name: "IndexStoreCAPI",),
 
     // MARK: Swift interface
 

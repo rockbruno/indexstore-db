@@ -11,7 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 public import Foundation
-public import IndexStoreDB_CIndexStoreDB
+public import IndexStoreCAPI
 
 /// Representation of a unit file within the Index Store that can be used to read its contents.
 public final class IndexStoreUnit: Sendable {
