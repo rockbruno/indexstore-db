@@ -10,7 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-public import IndexStoreDB_CIndexStoreDB
+public import IndexStoreCAPI
 
 /// A relation of a symbol occurrence to another symbol.
 public struct IndexStoreSymbolRelation: ~Escapable, Sendable {

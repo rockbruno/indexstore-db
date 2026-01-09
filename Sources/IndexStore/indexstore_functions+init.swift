@@ -11,7 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-import IndexStoreDB_CIndexStoreDB
+import IndexStoreCAPI
 
 extension indexstore_functions_t {
   /// Load all Index Store functions from a dynamic library that was opened using `dlopen`. The `dlhandle` is the handle

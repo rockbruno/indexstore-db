@@ -10,7 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-public import IndexStoreDB_CIndexStoreDB
+public import IndexStoreCAPI
 
 /// A role with which a symbol may occur in a source file or how it is related to another symbol.
 ///

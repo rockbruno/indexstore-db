@@ -11,7 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-public import IndexStoreDB_CIndexStoreDB
+public import IndexStoreCAPI
 
 /// An entire index store, ie. a directory containing the unit and record files.
 public final class IndexStore: Sendable {

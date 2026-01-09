@@ -10,7 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-public import IndexStoreDB_CIndexStoreDB
+public import IndexStoreCAPI
 
 public enum IterationContinuationBehavior {
   case `continue`

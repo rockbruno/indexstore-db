@@ -10,7 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-public import IndexStoreDB_CIndexStoreDB
+public import IndexStoreCAPI
 
 /// The occurrence of a symbol in a source file.
 ///

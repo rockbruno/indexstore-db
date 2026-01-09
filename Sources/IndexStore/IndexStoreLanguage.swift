@@ -10,7 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-public import IndexStoreDB_CIndexStoreDB
+public import IndexStoreCAPI
 
 /// The language of a source file that was processed by the Index Store.
 public struct IndexStoreLanguage: RawRepresentable, Hashable, Sendable {

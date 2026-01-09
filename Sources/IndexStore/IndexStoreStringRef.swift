@@ -11,7 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 public import Foundation
-public import IndexStoreDB_CIndexStoreDB
+public import IndexStoreCAPI
 
 /// A potentially stack-allocated string yielded by the Index Store.
 ///

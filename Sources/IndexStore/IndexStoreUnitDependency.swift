@@ -10,7 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-public import IndexStoreDB_CIndexStoreDB
+public import IndexStoreCAPI
 
 public struct IndexStoreUnitDependency: ~Escapable, Sendable {
   public struct Kind: RawRepresentable, Sendable, Hashable {

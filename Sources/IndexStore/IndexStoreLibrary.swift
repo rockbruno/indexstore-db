@@ -11,7 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 public import Foundation
-public import IndexStoreDB_CIndexStoreDB
+public import IndexStoreCAPI
 
 fileprivate actor IndexStoreLibraryRegistry {
   static let shared = IndexStoreLibraryRegistry()
