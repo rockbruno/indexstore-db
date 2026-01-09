@@ -55,6 +55,7 @@ let package = Package(
     .target(
       name: "IndexStore",
       dependencies: ["IndexStoreCAPI"],
+      exclude: ["Index Store.md", "README.md"],
       swiftSettings: [
         .enableUpcomingFeature("ExistentialAny"),
         .enableUpcomingFeature("InternalImportsByDefault"),
