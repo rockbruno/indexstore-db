@@ -2,7 +2,7 @@
 
 IndexStoreDB is a source code indexing library. It provides a composable and efficient query API for looking up source code symbols, symbol occurrences, and relations. IndexStoreDB uses the libIndexStore library, which lives in [swiftlang/llvm-project](https://github.com/swiftlang/llvm-project/tree/apple/main/clang/tools/IndexStore), for reading raw index data. Raw index data can be produced by compilers such as Apple Clang and Swift using the `-index-store-path` option. IndexStoreDB enables efficiently querying this data by maintaining acceleration tables in a key-value database built with [LMDB](http://www.lmdb.tech/).
 
-IndexStoreDB's data model is derived from libIndexStore. For more information about libIndexStore, and producing raw indexing data, see the [Indexing While Building](https://docs.google.com/document/d/1cH2sTpgSnJZCkZtJl1aY-rzy4uGPcrI-6RrUpdATO2Q/) whitepaper.
+IndexStoreDB's data model is derived from libIndexStore. For more information about libIndexStore, and producing raw indexing data, see the [Indexing While Building](https://docs.google.com/document/d/1cH2sTpgSnJZCkZtJl1aY-rzy4uGPcrI-6RrUpdATO2Q/) whitepaper. For a general overview of how the Index Store is structured, see [Index Store.md](Sources/IndexStore/Index%20Store.md).
 
 ## Building IndexStoreDB
 
