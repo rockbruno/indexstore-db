@@ -161,4 +161,16 @@ public final class IndexStoreUnit: Sendable {
       }
     }
   }
+
+  /// The `#include` (or equivalent like `#import`) directive that were processed while indexing this unit.
+  @inlinable
+  public var includes: IndexStoreSequence<IndexStoreUnitInclude> {
+    return IndexStoreSequence { body in
+      _ = iterateWithClosureAsContextToCFunctionPointer { context, handleResult in
+        self.library.api.unit_reader_includes_apply_f(self.unitReader, context, handleResult)
+      } handleResult: { result in
+        return body(IndexStoreUnitInclude(include: result!, library: self.library))
+      }
+    }
+  }
 }

@@ -210,4 +210,34 @@ struct IndexStoreTests {
       }
     }
   }
+
+  @Test
+  func includesInCFiles() async throws {
+    let project = TestProject(
+      clangFiles: [
+        "test.c": """
+        // A comment
+        #include "test.h"
+
+        void foo() {}
+        """
+      ],
+      supplementaryFiles: [
+        "test.h": """
+        void foo();
+        """
+      ]
+    )
+    try await project.withIndexStore { indexStore in
+      let unitName = try #require(indexStore.unitNames(sorted: false).map { $0.string }.only)
+      let unit = try indexStore.unit(named: unitName)
+      let includes = unit.includes.map { (source: $0.sourcePath.string, target: $0.targetPath.string, line: $0.line) }
+      let include = try #require(includes.only)
+
+      #expect(include.source.hasSuffix("test.c"))
+      #expect(include.target.hasSuffix("test.h"))
+      #expect(include.line == 2)
+    }
+    print()
+  }
 }
