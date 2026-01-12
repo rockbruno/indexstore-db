@@ -28,6 +28,11 @@ public final class IndexStoreUnit: Sendable {
     }
   }
 
+  @inlinable
+  deinit {
+    library.api.unit_reader_dispose(unitReader)
+  }
+
   /// Whether the unit represents code from the SDK instead of the project's source code.
   @inlinable
   public var isSystemUnit: Bool {
