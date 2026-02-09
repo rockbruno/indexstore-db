@@ -49,6 +49,8 @@ const unsigned Database::DATABASE_FORMAT_VERSION = 13;
 
 static const char *DeadProcessDBSuffix = "-dead";
 
+static void tryRecoverOrphanedDatabase(StringRef versionedPath, StringRef savedPath);
+
 static std::error_code renameDirectory(const Twine &from, const Twine &to) {
   // llvm::sys::fs::rename is not able to rename directories on Windows. Use `MoveFile` directly.
   #if defined(_WIN32)
@@ -174,6 +176,9 @@ Database::Implementation::create(StringRef path, bool readonly, Optional<size_t>
   if (!readonly) {
     if (createDirectoriesOrError(versionPath))
       return nullptr;
+
+    // If 'saved' doesn't exist, recover from any existing orphaned database.
+    tryRecoverOrphanedDatabase(versionPath, savedPathBuf);
 
     // Move the currently stored database to a unique directory to isolate it.
     // When the database closes it moves the unique directory back to
@@ -343,6 +348,24 @@ static bool isProcessStillExecuting(indexstorePid_t PID) {
     return false;
   return true;
 #endif
+}
+
+/// If 'saved' doesn't exist, find any existing p* folder and rename it to 'saved'.
+static void tryRecoverOrphanedDatabase(StringRef versionedPath, StringRef savedPath) {
+  using namespace llvm::sys::fs;
+
+  if (exists(savedPath))
+    return;
+
+  std::error_code EC;
+  for (directory_iterator I(versionedPath, EC), E; I != E; I.increment(EC)) {
+    StringRef path = I->path();
+    StringRef name = llvm::sys::path::filename(path);
+    if (name.startswith("p") && !name.endswith(DeadProcessDBSuffix)) {
+      renameDirectory(path, savedPath);
+      return;
+    }
+  }
 }
 
 // This runs in a background priority queue.
