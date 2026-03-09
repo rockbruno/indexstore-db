@@ -139,6 +139,8 @@ public:
             Optional<size_t> initialDBSize,
             std::string &Error);
 
+  void close();
+
   bool isUnitOutOfDate(StringRef unitOutputPath, ArrayRef<StringRef> dirtyFiles);
   bool isUnitOutOfDate(StringRef unitOutputPath, llvm::sys::TimePoint<> outOfDateModTime);
   llvm::Optional<llvm::sys::TimePoint<>> timestampOfUnitForOutputPath(StringRef unitOutputPath);
@@ -299,6 +301,14 @@ bool IndexSystemImpl::init(StringRef StorePath,
   if (!this->IndexStore)
     return true;
   return false;
+}
+
+void IndexSystemImpl::close() {
+  IndexStore.reset();
+  DelegateWrap.reset();
+  SymIndex.reset();
+  PathIndex.reset();
+  VisibilityChecker.reset();
 }
 
 bool IndexSystemImpl::isUnitOutOfDate(StringRef unitOutputPath, ArrayRef<StringRef> dirtyFiles) {
@@ -688,6 +698,10 @@ IndexSystem::create(StringRef StorePath,
 
 IndexSystem::~IndexSystem() {
   delete IMPL;
+}
+
+void IndexSystem::close() {
+  IMPL->close();
 }
 
 bool IndexSystem::isUnitOutOfDate(StringRef unitOutputPath, ArrayRef<StringRef> dirtyFiles) {

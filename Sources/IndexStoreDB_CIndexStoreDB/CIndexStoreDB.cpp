@@ -182,6 +182,11 @@ indexstoredb_index_create_from_existing(void *opaqueIndexSystem) {
   return make_object(*indexSystem);
 }
 
+void indexstoredb_index_close(indexstoredb_index_t index) {
+  auto obj = (Object<std::shared_ptr<IndexSystem>> *)index;
+  obj->value->close();
+}
+
 void indexstoredb_index_add_delegate(indexstoredb_index_t index,
                                      indexstoredb_delegate_event_receiver_t delegateCallback) {
   auto delegate = std::make_shared<BlockIndexSystemDelegate>(delegateCallback);

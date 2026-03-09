@@ -57,6 +57,11 @@ class INDEXSTOREDB_EXPORT IndexSystem {
 public:
   ~IndexSystem();
 
+  /// Explicitly close the index system, releasing all internal resources
+  /// (database, file watchers, delegate queues, etc.) immediately rather than
+  /// waiting for the shared_ptr reference count to reach zero.
+  void close();
+
   static std::shared_ptr<IndexSystem> create(StringRef StorePath,
                                              StringRef dbasePath,
                                              std::shared_ptr<IndexStoreLibraryProvider> storeLibProvider,

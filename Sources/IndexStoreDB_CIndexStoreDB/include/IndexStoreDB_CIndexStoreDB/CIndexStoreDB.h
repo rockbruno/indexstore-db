@@ -230,6 +230,12 @@ indexstoredb_index_create(const char * _Nonnull storePath,
 INDEXSTOREDB_PUBLIC _Nonnull indexstoredb_index_t
 indexstoredb_index_create_from_existing(void *_Nonnull opaqueIndexSystem);
 
+/// Explicitly close the index, releasing all internal resources (database,
+/// file watchers, delegate queues, etc.) immediately rather than waiting for
+/// the reference count to reach zero.
+INDEXSTOREDB_PUBLIC void
+indexstoredb_index_close(_Nonnull indexstoredb_index_t index);
+
 /// Add an additional delegate to the given index.
 INDEXSTOREDB_PUBLIC void
 indexstoredb_index_add_delegate(_Nonnull indexstoredb_index_t index,

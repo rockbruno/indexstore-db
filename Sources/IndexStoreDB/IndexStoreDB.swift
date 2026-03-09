@@ -152,6 +152,13 @@ public final class IndexStoreDB {
     indexstoredb_release(impl)
   }
 
+  /// Explicitly close the index, releasing all internal resources (database,
+  /// file watchers, delegate queues, etc.) immediately rather than waiting for
+  /// ARC to deallocate this object.
+  public func close() {
+    indexstoredb_index_close(impl)
+  }
+
   /// Poll for any changes to units and wait until they have been registered.
   ///
   /// This scans through all unit files on the file system and is thus a fairly costly operation. It should primarily
