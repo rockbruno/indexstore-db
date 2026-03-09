@@ -48,8 +48,68 @@ using namespace IndexStoreDB::db;
 const unsigned Database::DATABASE_FORMAT_VERSION = 13;
 
 static const char *DeadProcessDBSuffix = "-dead";
+static const char *SavedDirPrefix = "saved";
 
-static void tryRecoverOrphanedDatabase(StringRef versionedPath, StringRef savedPath);
+static void tryRecoverOrphanedDatabases(StringRef versionedPath);
+static bool isProcessStillExecuting(indexstorePid_t PID);
+
+/// Find the best saved database directory to claim (highest-numbered slot).
+/// Returns empty string if none found.
+static std::string findBestSavedDir(StringRef versionedPath) {
+  using namespace llvm::sys::fs;
+  SmallString<128> canonicalSaved = versionedPath;
+  llvm::sys::path::append(canonicalSaved, SavedDirPrefix);
+
+  std::string best;
+  int bestN = 0; // saved/ is slot 1
+
+  std::error_code EC;
+  for (directory_iterator I(versionedPath, EC), E; I != E; I.increment(EC)) {
+    StringRef name = llvm::sys::path::filename(I->path());
+    if (name == SavedDirPrefix) {
+      if (bestN < 1) {
+        bestN = 1;
+        best = I->path();
+      }
+    } else if (name.startswith("saved-")) {
+      StringRef suffix = name.substr(6); // after "saved-"
+      unsigned n;
+      if (!suffix.getAsInteger(10, n) && (int)n > bestN) {
+        bestN = (int)n;
+        best = I->path();
+      }
+    }
+  }
+  return best;
+}
+
+/// Find the next available saved slot to write to.
+/// Returns "saved/" if available, otherwise "saved-2/", "saved-3/", etc.
+static std::string findNextSavedSlot(StringRef versionedPath) {
+  using namespace llvm::sys::fs;
+  SmallString<128> canonicalSaved = versionedPath;
+  llvm::sys::path::append(canonicalSaved, SavedDirPrefix);
+
+  if (!exists(canonicalSaved))
+    return canonicalSaved.str().str();
+
+  int highestN = 1; // saved/ counts as slot 1
+  std::error_code EC;
+  for (directory_iterator I(versionedPath, EC), E; I != E; I.increment(EC)) {
+    StringRef name = llvm::sys::path::filename(I->path());
+    if (name.startswith("saved-")) {
+      StringRef suffix = name.substr(6);
+      unsigned n;
+      if (!suffix.getAsInteger(10, n) && (int)n > highestN) {
+        highestN = (int)n;
+      }
+    }
+  }
+
+  SmallString<128> nextSlot = versionedPath;
+  llvm::sys::path::append(nextSlot, llvm::Twine("saved-") + llvm::Twine(highestN + 1));
+  return nextSlot.str().str();
+}
 
 static std::error_code renameDirectory(const Twine &from, const Twine &to) {
   // llvm::sys::fs::rename is not able to rename directories on Windows. Use `MoveFile` directly.
@@ -120,15 +180,19 @@ Database::Implementation::Implementation() {
 Database::Implementation::~Implementation() {
   if (!IsReadOnly) {
     DBEnv.close();
-    assert(!SavedPath.empty() && !UniquePath.empty());
-    // In case some other process already created the 'saved' path, override it so
-    // that the 'last one wins'.
-    renameDirectory(SavedPath, llvm::Twine(UniquePath)+"-saved"+DeadProcessDBSuffix);
-    if (std::error_code ec = renameDirectory(UniquePath, SavedPath)) {
-      // If the database directory already got removed or some other process beat
-      // us during the tiny window between the above 2 renames, then give-up,
-      // and let the database to be discarded.
-      LOG_INFO_FUNC(High, "failed moving " << llvm::sys::path::filename(UniquePath) << " directory to 'saved': " << ec.message());
+    assert(!UniquePath.empty() && !VersionedPath.empty());
+    // Find the next available saved slot. If saved/ is taken by another process,
+    // we write to saved-2/, saved-3/, etc. This way multiple processes never
+    // overwrite each other's data.
+    for (int attempt = 0; attempt < 3; ++attempt) {
+      std::string targetSlot = findNextSavedSlot(VersionedPath);
+      if (std::error_code ec = renameDirectory(UniquePath, targetSlot)) {
+        LOG_INFO_FUNC(High, "failed moving " << llvm::sys::path::filename(UniquePath)
+                      << " to '" << llvm::sys::path::filename(targetSlot)
+                      << "': " << ec.message() << " (attempt " << attempt + 1 << ")");
+        continue;
+      }
+      break;
     }
   }
 
@@ -177,23 +241,34 @@ Database::Implementation::create(StringRef path, bool readonly, Optional<size_t>
     if (createDirectoriesOrError(versionPath))
       return nullptr;
 
-    // If 'saved' doesn't exist, recover from any existing orphaned database.
-    tryRecoverOrphanedDatabase(versionPath, savedPathBuf);
+    // Recover any orphaned databases from crashed processes into saved slots.
+    tryRecoverOrphanedDatabases(versionPath);
 
-    // Move the currently stored database to a unique directory to isolate it.
-    // When the database closes it moves the unique directory back to
-    // the '/saved' one. If we crash before closing, then we'll discard the database
-    // that is left in the unique directory that includes the process pid number.
     if (createUniqueDirOrError())
       return nullptr;
 
-    // This succeeds for moving to an empty directory, like the newly constructed `uniqueDirPath`.
-    if (renameDirectory(savedPathBuf, uniqueDirPath)) {
-      // No existing database, just use the new directory.
+    // Find the best saved database to claim (preferring saved/, then highest
+    // saved-N/). Each process claims one slot, leaving others for concurrent
+    // processes.
+    std::string bestSaved = findBestSavedDir(versionPath);
+    if (!bestSaved.empty()) {
+      if (renameDirectory(bestSaved, uniqueDirPath)) {
+        // Rename failed (race with another process), try again.
+        bestSaved = findBestSavedDir(versionPath);
+        if (bestSaved.empty() || renameDirectory(bestSaved, uniqueDirPath)) {
+          existingDB = false;
+        }
+      }
+    } else {
       existingDB = false;
     }
     dbPath = uniqueDirPath;
   } else {
+    // For readonly mode, find the best available saved database.
+    std::string bestSaved = findBestSavedDir(versionPath);
+    if (!bestSaved.empty()) {
+      savedPathBuf = bestSaved;
+    }
     dbPath = savedPathBuf;
   }
 
@@ -350,21 +425,40 @@ static bool isProcessStillExecuting(indexstorePid_t PID) {
 #endif
 }
 
-/// If 'saved' doesn't exist, find any existing p* folder and rename it to 'saved'.
-static void tryRecoverOrphanedDatabase(StringRef versionedPath, StringRef savedPath) {
+/// Recover orphaned p{PID}-* databases from crashed processes into saved slots.
+static void tryRecoverOrphanedDatabases(StringRef versionedPath) {
   using namespace llvm::sys::fs;
 
-  if (exists(savedPath))
-    return;
+#if defined(WIN32)
+  indexstorePid_t currPID = GetCurrentProcessId();
+#else
+  indexstorePid_t currPID = getpid();
+#endif
 
   std::error_code EC;
   for (directory_iterator I(versionedPath, EC), E; I != E; I.increment(EC)) {
     StringRef path = I->path();
     StringRef name = llvm::sys::path::filename(path);
-    if (name.startswith("p") && !name.endswith(DeadProcessDBSuffix)) {
-      renameDirectory(path, savedPath);
-      return;
-    }
+    if (!name.startswith("p") || name.endswith(DeadProcessDBSuffix))
+      continue;
+
+    // Extract PID from p{PID}-{suffix} and check if it's still alive.
+    StringRef pidStr = name.substr(1);
+    size_t dashIdx = pidStr.find('-');
+    if (dashIdx == StringRef::npos)
+      continue;
+    pidStr = pidStr.substr(0, dashIdx);
+    size_t pathPID;
+    if (pidStr.getAsInteger(10, pathPID))
+      continue;
+    if ((indexstorePid_t)pathPID == currPID)
+      continue;
+    if (isProcessStillExecuting((indexstorePid_t)pathPID))
+      continue;
+
+    // Process is dead -- recover its database to the next available saved slot.
+    std::string targetSlot = findNextSavedSlot(versionedPath);
+    renameDirectory(path, targetSlot);
   }
 }
 
